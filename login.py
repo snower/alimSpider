@@ -142,7 +142,7 @@ class Spider(object):
             logging.info('\n\n' + '*' * 8 + "COOKIES" + "*" * 8 + '\n' + self.cookies + '\n' + '*' * 8 + "COOKIES" + "*" * 8 + "\n\n")
         else:
             try:
-                with open(cookies_fileanme, "w"):
+                with open(cookies_fileanme, "w") as fp:
                     fp.write(self.cookies.encode("utf-8"))
             except Exception as e:
                 logging.info("output error %s", e)
