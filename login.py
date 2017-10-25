@@ -46,6 +46,15 @@ cookies_fileanme = args.cookies_fileanme or ''
 demon_mod = args.demon_mod
 refresh_time = args.refresh_time
 
+if isinstance(username, str):
+    username = username.decode("utf-8")
+
+if isinstance(password, str):
+    password = password.decode("utf-8")
+
+if isinstance(success_url, str):
+    success_url = success_url.decode("utf-8")
+
 if cookies_fileanme:
     cookies_fileanme = os.path.abspath(cookies_fileanme)
 
@@ -164,7 +173,7 @@ class Spider(object):
     def login(self):
         self.web.get("http://pub.alimama.com/")
         self.load_cookies()
-        url = 'http://pub.alimama.com/myunion.htm'
+        url = success_url
         print "load", url
         self.web.get(url)
         if self.web.current_url == success_url:
@@ -178,11 +187,39 @@ class Spider(object):
                 url = taobaoLoginIfr[0].get_attribute("src")
                 print 'load', url
                 self.web.get(url)
-                self.web.find_element_by_class_name('login-switch').click()
-                self.web.find_element_by_id('TPL_username_1').send_keys(username)
-                self.web.find_element_by_id('TPL_password_1').send_keys(password)
-                print "login", self.web.find_element_by_id('TPL_username_1').get_attribute("value"), self.web.find_element_by_id('TPL_password_1').get_attribute("value")
+
+                login_switch = self.web.find_element_by_class_name('login-switch')
+                if login_switch.is_displayed():
+                    login_switch.click()
+
+                TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
+                while not TPL_username_1.is_displayed():
+                    time.sleep(0.05)
+                    TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
+                TPL_username_1.send_keys(username)
+
+                TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
+                while not TPL_password_1.is_displayed():
+                    time.sleep(0.05)
+                    TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
+                TPL_password_1.send_keys(password)
+
+                TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
+                while not TPL_username_1.is_displayed() or TPL_username_1.get_attribute("value") != username:
+                    time.sleep(0.05)
+                    TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
+
+                    TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
+                while not TPL_password_1.is_displayed() or TPL_password_1.get_attribute("value") != username:
+                    time.sleep(0.05)
+                    TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
+
+                login_url = self.web.current_url
+                print 'login', login_url
                 self.web.find_element_by_id('J_SubmitStatic').click()
+                while login_url == self.web.current_url:
+                    time.sleep(0.05)
+
                 if self.web.current_url.startswith('https://login.taobao.com/member/login.jhtml'):
                     print "start qrcode login", self.web.current_url
                     J_Static2Quick = self.web.find_element_by_id('J_Static2Quick')
