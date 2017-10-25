@@ -3,6 +3,7 @@
 # create by: snower
 
 import os
+import sys
 import time
 import json
 import hashlib
@@ -10,6 +11,7 @@ from cStringIO import StringIO
 import argparse
 import threading
 import requests
+import logging
 from PIL import Image
 from selenium import webdriver
 from tornado.ioloop import IOLoop
@@ -33,6 +35,7 @@ parser.add_argument('-s', dest='session_filename', default="cookies.json", help=
 parser.add_argument('-o', dest='cookies_fileanme', default='', help='login cookies output fileame (default: stdout)')
 parser.add_argument('-D', dest='demon_mod', default=False, type=str2bool, nargs='?', const=True, help='demon')
 parser.add_argument('-t', dest='refresh_time', default=900, type=int, help='refresh time (default: 900s)')
+parser.add_argument('-O', dest='log_filename', default='', help='log_filename (default: stdout)')
 
 args = parser.parse_args()
 
@@ -45,6 +48,7 @@ session_filename = os.path.abspath(args.session_filename)
 cookies_fileanme = args.cookies_fileanme or ''
 demon_mod = args.demon_mod
 refresh_time = args.refresh_time
+log_filename = args.log_filename
 
 if isinstance(username, str):
     username = username.decode("utf-8")
@@ -57,6 +61,9 @@ if isinstance(success_url, str):
 
 if cookies_fileanme:
     cookies_fileanme = os.path.abspath(cookies_fileanme)
+
+if log_filename:
+    log_filename = os.path.abspath(log_filename)
 
 class QRcode:
     def __init__(self, image, width=33, height=33):
@@ -105,9 +112,9 @@ class Spider(object):
                     cookies = session[user_id]
                     for cookie in cookies:
                         self.web.add_cookie(cookie)
-                    print 'load cookies'
+                    logging.info('load cookies')
         except Exception as e:
-            print 'load cookies error', e
+            logging.info('load cookies error %s', e)
 
     def save_cookies(self):
         user_id = self.get_user_id()
@@ -132,26 +139,22 @@ class Spider(object):
         self.cookies = ";".join(fcookies)
 
         if not cookies_fileanme:
-            print
-            print '*' * 8 + "COOKIES" + "*" * 8
-            print self.cookies
-            print '*' * 8 + "COOKIES" + "*" * 8
-            print
+            logging.info('\n\n' + '*' * 8 + "COOKIES" + "*" * 8 + '\n' + self.cookies + '\n' + '*' * 8 + "COOKIES" + "*" * 8 + "\n\n")
         else:
             try:
                 with open(cookies_fileanme, "w"):
                     fp.write(self.cookies.encode("utf-8"))
             except Exception as e:
-                print "output error", e
-        print 'save cookies'
+                logging.info("output error %s", e)
+        logging.info('save cookies')
 
     def show_qrcode(self):
-        print 'checking login qrcode displayed'
+        logging.info('checking login qrcode displayed')
         J_QRCodeImg = self.web.find_element_by_id('J_QRCodeImg')
         while not J_QRCodeImg.is_displayed():
             time.sleep(0.05)
 
-        print 'checking login qrcode image loaded'
+        logging.info('checking login qrcode image loaded')
         J_QRCodeImg_url = ''
         while not J_QRCodeImg_url:
             J_QRCodeImg = J_QRCodeImg.find_element_by_tag_name("img")
@@ -160,7 +163,7 @@ class Spider(object):
             J_QRCodeImg_url = J_QRCodeImg.get_attribute("src")
             if not J_QRCodeImg_url:
                 time.sleep(0.05)
-        print 'login qrcode', J_QRCodeImg_url
+        logging.info('login qrcode %s', J_QRCodeImg_url)
 
         self.save_cookies()
         headers = {
@@ -171,68 +174,68 @@ class Spider(object):
         if res.ok:
             img = StringIO(res.content)
             qrcode = QRcode(img, 46, 46)
-            print 'show qrcode'
-            print qrcode.show()
+            logging.info('show qrcode')
+            logging.info(qrcode.show())
 
     def login(self):
         self.web.get("http://pub.alimama.com/")
         self.load_cookies()
         url = success_url
-        print "load", url
+        logging.info("load %s", url)
         self.web.get(url)
         if self.web.current_url == success_url:
-            print 'login success'
+            logging.info('login success')
             self.login_succed = True
             self.save_cookies()
         elif self.web.current_url != url:
-            print "redirect login", self.web.current_url
+            logging.info("redirect login %s", self.web.current_url)
             taobaoLoginIfr = self.web.find_elements_by_name("taobaoLoginIfr")
             if taobaoLoginIfr:
                 url = taobaoLoginIfr[0].get_attribute("src")
-                print 'load', url
+                logging.info('load %s', url)
                 self.web.get(url)
 
                 J_Quick2Static = self.web.find_element_by_class_name('J_Quick2Static')
                 if J_Quick2Static.is_displayed():
-                    print 'display login form'
+                    logging.info('display login form')
                     J_Quick2Static.click()
 
-                print 'checking username displayed'
+                logging.info('checking username displayed')
                 TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
                 while not TPL_username_1.is_displayed():
                     time.sleep(0.05)
                     TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
-                print 'username send_keys'
+                logging.info('username send_keys')
                 TPL_username_1.send_keys(username)
 
-                print 'checking username displayed'
+                logging.info('checking username displayed')
                 TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
                 while not TPL_password_1.is_displayed():
                     time.sleep(0.05)
                     TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
-                print 'password send_keys'
+                logging.info('password send_keys')
                 TPL_password_1.send_keys(password)
 
-                print 'checking username send_keys'
+                logging.info('checking username send_keys')
                 TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
                 while TPL_username_1.get_attribute("value") != username:
                     time.sleep(0.05)
                     TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
 
-                print 'checking password send_keys'
+                logging.info('checking password send_keys')
                 TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
                 while TPL_password_1.get_attribute("value") != password:
                     time.sleep(0.05)
                     TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
 
                 login_url = self.web.current_url
-                print 'login', login_url
+                logging.info('login %s', login_url)
                 self.web.find_element_by_id('J_SubmitStatic').click()
                 while login_url == self.web.current_url:
                     time.sleep(0.05)
 
                 if self.web.current_url.startswith('https://login.taobao.com/member/login.jhtml'):
-                    print "start qrcode login", self.web.current_url
+                    logging.info("start qrcode login %s", self.web.current_url)
                     J_Static2Quick = self.web.find_element_by_id('J_Static2Quick')
                     if J_Static2Quick.is_displayed():
                         J_Static2Quick.click()
@@ -240,7 +243,7 @@ class Spider(object):
                     self.show_qrcode()
                     while True:
                         if self.web.current_url == success_url:
-                            print 'login success'
+                            logging.info('login success')
                             self.login_succed = True
                             self.save_cookies()
                             break
@@ -265,6 +268,13 @@ def start_server():
     IOLoop.current().start()
 
 if __name__ == '__main__':
+    if log_filename:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)1.1s %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S', filemode='a+', filename=log_filename)
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)1.1s %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S', filemode='a+', stream = sys.stdout)
+
     if bind_port:
         server_thread = threading.Thread(target=start_server)
         server_thread.setDaemon(True)
@@ -275,8 +285,8 @@ if __name__ == '__main__':
     if demon_mod:
         while True:
             time.sleep(refresh_time)
-            print "start refresh"
+            logging.info("start refresh")
             spider.login()
-            print "end refresh"
+            logging.info("end refresh")
     else:
         spider.quit()
