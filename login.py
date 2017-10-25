@@ -146,9 +146,12 @@ class Spider(object):
         print 'save cookies'
 
     def show_qrcode(self):
+        print 'checking login qrcode displayed'
         J_QRCodeImg = self.web.find_element_by_id('J_QRCodeImg')
         while not J_QRCodeImg.is_displayed():
             time.sleep(0.05)
+
+        print 'checking login qrcode image loaded'
         J_QRCodeImg_url = ''
         while not J_QRCodeImg_url:
             J_QRCodeImg = J_QRCodeImg.find_element_by_tag_name("img")
@@ -157,7 +160,7 @@ class Spider(object):
             J_QRCodeImg_url = J_QRCodeImg.get_attribute("src")
             if not J_QRCodeImg_url:
                 time.sleep(0.05)
-        print 'scan qrcode', J_QRCodeImg_url
+        print 'login qrcode', J_QRCodeImg_url
 
         self.save_cookies()
         headers = {
@@ -168,6 +171,7 @@ class Spider(object):
         if res.ok:
             img = StringIO(res.content)
             qrcode = QRcode(img, 46, 46)
+            print 'show qrcode'
             print qrcode.show()
 
     def login(self):
@@ -190,27 +194,34 @@ class Spider(object):
 
                 J_Quick2Static = self.web.find_element_by_class_name('J_Quick2Static')
                 if J_Quick2Static.is_displayed():
+                    print 'display login form'
                     J_Quick2Static.click()
 
+                print 'checking username displayed'
                 TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
                 while not TPL_username_1.is_displayed():
                     time.sleep(0.05)
                     TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
+                print 'username send_keys'
                 TPL_username_1.send_keys(username)
 
+                print 'checking username displayed'
                 TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
                 while not TPL_password_1.is_displayed():
                     time.sleep(0.05)
                     TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
+                print 'password send_keys'
                 TPL_password_1.send_keys(password)
 
+                print 'checking username send_keys'
                 TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
                 while TPL_username_1.get_attribute("value") != username:
                     time.sleep(0.05)
                     TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
 
+                print 'checking password send_keys'
                 TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
-                while TPL_password_1.get_attribute("value") != username:
+                while TPL_password_1.get_attribute("value") != password:
                     time.sleep(0.05)
                     TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
 
