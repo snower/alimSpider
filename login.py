@@ -12,6 +12,7 @@ import argparse
 import threading
 import requests
 import logging
+import signal
 from PIL import Image
 from selenium import webdriver
 from tornado.ioloop import IOLoop
@@ -267,7 +268,14 @@ def start_server():
     app.listen(bind_port, bind_host)
     IOLoop.current().start()
 
+def exit_handler(*args, **kwargs):
+    global is_stoped
+    is_stoped = True
+
 if __name__ == '__main__':
+    signal.signal(signal.SIGHUP, exit_handler)
+    signal.signal(signal.SIGINT, exit_handler)
+    signal.signal(signal.SIGTERM, exit_handler)
     if log_filename:
         logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)1.1s %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S', filemode='a+', filename=log_filename)
@@ -280,13 +288,18 @@ if __name__ == '__main__':
         server_thread.setDaemon(True)
         server_thread.start()
 
+    is_stoped = False
     spider = Spider()
     spider.login()
     if demon_mod:
-        while True:
-            time.sleep(refresh_time)
-            logging.info("start refresh")
-            spider.login()
-            logging.info("end refresh")
+        last_refresh_time = time.time()
+        while not is_stoped:
+            time.sleep(1)
+            if time.time() - last_refresh_time >= refresh_time:
+                logging.info("start refresh")
+                spider.login()
+                logging.info("end refresh")
+                last_refresh_time = time.time()
+        spider.quit()
     else:
         spider.quit()
