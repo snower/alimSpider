@@ -188,9 +188,9 @@ class Spider(object):
                 print 'load', url
                 self.web.get(url)
 
-                login_switch = self.web.find_element_by_class_name('login-switch')
-                if login_switch.is_displayed():
-                    login_switch.click()
+                J_Quick2Static = self.web.find_element_by_class_name('J_Quick2Static')
+                if J_Quick2Static.is_displayed():
+                    J_Quick2Static.click()
 
                 TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
                 while not TPL_username_1.is_displayed():
@@ -205,12 +205,12 @@ class Spider(object):
                 TPL_password_1.send_keys(password)
 
                 TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
-                while not TPL_username_1.is_displayed() or TPL_username_1.get_attribute("value") != username:
+                while TPL_username_1.get_attribute("value") != username:
                     time.sleep(0.05)
                     TPL_username_1 = self.web.find_element_by_id('TPL_username_1')
 
-                    TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
-                while not TPL_password_1.is_displayed() or TPL_password_1.get_attribute("value") != username:
+                TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
+                while TPL_password_1.get_attribute("value") != username:
                     time.sleep(0.05)
                     TPL_password_1 = self.web.find_element_by_id('TPL_password_1')
 
