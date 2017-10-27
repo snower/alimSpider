@@ -176,7 +176,7 @@ class Spider(object):
             img = StringIO(res.content)
             qrcode = QRcode(img, 46, 46)
             logging.info('show qrcode')
-            logging.info(qrcode.show())
+            logging.info('\n' + qrcode.show())
 
     def login(self):
         self.web.get("http://pub.alimama.com/")
