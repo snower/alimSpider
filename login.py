@@ -15,6 +15,7 @@ import logging
 import signal
 from PIL import Image
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from tornado.ioloop import IOLoop
 from tornado.web import Application, RequestHandler
 
@@ -29,6 +30,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser(description='audo login alimama')
 parser.add_argument('-u', dest='username', help='alimama username')
 parser.add_argument('-p', dest='password', help='alimama password')
+parser.add_argument('-c', dest='client_id', default='', help='alimama client_id')
 parser.add_argument('-i', dest='index_url', default="http://pub.alimama.com/myunion.htm", help='login index url')
 parser.add_argument('-H', dest='bind_host', default='0.0.0.0', help='api bing host (default: 0.0.0.0)')
 parser.add_argument('-P', dest='bind_port', default=0, type=int, help='api bing port (default: 0) if port is 0, it will not bind')
@@ -50,6 +52,7 @@ cookies_fileanme = args.cookies_fileanme or ''
 demon_mod = args.demon_mod
 refresh_time = args.refresh_time
 log_filename = args.log_filename
+client_id = args.client_id
 
 if isinstance(username, str):
     username = username.decode("utf-8")
@@ -100,6 +103,7 @@ class Spider(object):
         self.web.set_window_size(1920, 980)
         self.cookies = ''
         self.login_succed = False
+        self.session = {}
 
     def get_user_id(self):
         return hashlib.md5(username.encode("utf-8")).hexdigest()
@@ -254,6 +258,46 @@ class Spider(object):
                             self.show_qrcode()
                         time.sleep(1)
 
+    def get_session(self):
+        url = 'https://oauth.taobao.com/authorize?response_type=token&client_id=' + client_id + '&state=xql_tkb&view=web'
+        logging.info("load %s", url)
+        self.web.get(url)
+        start_time = time.time()
+        while True:
+            if self.web.current_url == url:
+                try:
+                    sub = self.web.find_element_by_id('sub')
+                except NoSuchElementException:
+                    self.web.find_element_by_id('J_SubmitStatic')
+                    logging.info("session fail %s", self.web.current_url)
+                    break
+
+                logging.info('checking sub displayed')
+                while not sub.is_displayed():
+                    time.sleep(0.05)
+                    sub = self.web.find_element_by_id('sub')
+                logging.info('confirm %s', self.web.current_url)
+                sub.click()
+
+            elif self.web.current_url.startswith("https://oauth.taobao.com/oauth2"):
+                url = self.web.current_url
+                data = url.split("#")
+                if data and len(data) == 2:
+                    data = data[1]
+                    result = {}
+                    for param in data.split('&'):
+                        param = param.split("=")
+                        if param and len(param) == 2:
+                            result[param[0]] = param[1]
+                    if result:
+                        self.session = result
+                logging.info("session success %s", url)
+                break
+
+            if time.time() - start_time > 30:
+                break
+            time.sleep(1)
+
     def quit(self):
         self.web.quit()
 
@@ -261,9 +305,18 @@ class CookiesRequestHandler(RequestHandler):
     def get(self):
         self.write(spider.cookies.encode("utf-8"))
 
+class SessionRequestHandler(RequestHandler):
+    def get(self):
+        name = self.get_query_argument("name", "")
+        if name:
+            self.write(spider.session.get(name, "").encode("utf-8"))
+        else:
+            self.write(("&".join(["%s=%s" % (key, value) for key, value in spider.session.iteritems()])).encode("utf-8"))
+
 def start_server():
     app = Application([
-        (r"/.*", CookiesRequestHandler),
+        (r"/cookies", CookiesRequestHandler),
+        (r"/session", SessionRequestHandler),
     ])
     app.listen(bind_port, bind_host)
     IOLoop.current().start()
@@ -291,6 +344,9 @@ if __name__ == '__main__':
     is_stoped = False
     spider = Spider()
     spider.login()
+    if client_id:
+        spider.get_session()
+        
     if demon_mod:
         last_refresh_time = time.time()
         while not is_stoped:
@@ -298,6 +354,8 @@ if __name__ == '__main__':
             if time.time() - last_refresh_time >= refresh_time:
                 logging.info("start refresh")
                 spider.login()
+                if client_id:
+                    spider.get_session()
                 logging.info("end refresh")
                 last_refresh_time = time.time()
         spider.quit()
