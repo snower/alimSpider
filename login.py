@@ -149,7 +149,7 @@ class Spider(object):
             json.dump(session, fp)
 
         fcookies = []
-        for cookie in cookies:
+        for cookie in cookies["pub.alimama.com"]:
             fcookies.append("%s=%s" % (cookie["name"], cookie["value"]))
         self.cookies = ";".join(fcookies)
 
@@ -181,10 +181,13 @@ class Spider(object):
         self.last_J_QRCodeImg_url = J_QRCodeImg_url
         logging.info('login qrcode %s', J_QRCodeImg_url)
 
-        self.save_cookies()
+        cookies = self.web.get_cookies()
+        fcookies = []
+        for cookie in cookies:
+            fcookies.append("%s=%s" % (cookie["name"], cookie["value"]))
         headers = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Mobile Safari/537.36",
-            "Cookie": self.cookies
+            "Cookie": ";".join(fcookies)
         }
         res = requests.get(J_QRCodeImg_url, headers = headers)
         if res.ok:
