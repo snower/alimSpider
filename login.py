@@ -104,6 +104,7 @@ class Spider(object):
         self.cookies = ''
         self.login_succed = False
         self.session = {}
+        self.last_J_QRCodeImg_url = ''
 
     def get_user_id(self):
         return hashlib.md5(username.encode("utf-8")).hexdigest()
@@ -166,8 +167,9 @@ class Spider(object):
             while not J_QRCodeImg.is_displayed():
                 time.sleep(0.05)
             J_QRCodeImg_url = J_QRCodeImg.get_attribute("src")
-            if not J_QRCodeImg_url:
+            if not J_QRCodeImg_url or J_QRCodeImg_url == self.last_J_QRCodeImg_url:
                 time.sleep(0.05)
+        self.last_J_QRCodeImg_url = J_QRCodeImg_url
         logging.info('login qrcode %s', J_QRCodeImg_url)
 
         self.save_cookies()
