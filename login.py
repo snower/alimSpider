@@ -116,7 +116,11 @@ class Spider(object):
                 user_id = self.get_user_id()
                 if user_id in session:
                     cookies = session[user_id]
-                    for cookie in cookies:
+                    self.web.get("https://login.taobao.com/")
+                    for cookie in cookies["login.taobao.com"]:
+                        self.web.add_cookie(cookie)
+                    self.web.get("http://pub.alimama.com/")
+                    for cookie in cookies["pub.alimama.com"]:
                         self.web.add_cookie(cookie)
                     logging.info('load cookies')
         except Exception as e:
@@ -134,7 +138,12 @@ class Spider(object):
         except Exception as e:
             pass
 
-        cookies = self.web.get_cookies()
+        cookies = {}
+        self.web.get("https://login.taobao.com/")
+        cookies["login.taobao.com"] = self.web.get_cookies()
+        self.web.get("http://pub.alimama.com/")
+        cookies["pub.alimama.com"] = self.web.get_cookies()
+
         session[user_id] = cookies
         with open(session_filename, "w") as fp:
             json.dump(session, fp)
@@ -270,7 +279,7 @@ class Spider(object):
                 try:
                     sub = self.web.find_element_by_id('sub')
                 except NoSuchElementException:
-                    self.web.find_element_by_id('J_SubmitStatic')
+                    self.web.find_element_by_id('J_loginIframe')
                     logging.info("session fail %s", self.web.current_url)
                     break
 
