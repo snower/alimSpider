@@ -338,7 +338,7 @@ class SessionRequestHandler(RequestHandler):
         force_refresh = self.get_query_argument("force_refresh", 0)
         if force_refresh:
             future = gen.Future()
-            tasks.put((future, spider.login, (), {}))
+            tasks.put((future, spider.get_session, (True,), {}))
             yield future
 
         if name:
