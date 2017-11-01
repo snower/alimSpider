@@ -13,11 +13,13 @@ import threading
 import requests
 import logging
 import signal
+import Queue
 from PIL import Image
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from tornado.ioloop import IOLoop
 from tornado.web import Application, RequestHandler
+from tornado import gen
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -186,7 +188,7 @@ class Spider(object):
         for cookie in cookies:
             fcookies.append("%s=%s" % (cookie["name"], cookie["value"]))
         headers = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Mobile Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36",
             "Cookie": ";".join(fcookies)
         }
         res = requests.get(J_QRCodeImg_url, headers = headers)
@@ -272,7 +274,10 @@ class Spider(object):
                             self.show_qrcode()
                         time.sleep(1)
 
-    def get_session(self):
+    def get_session(self, force_refresh = False):
+        if not force_refresh and self.session and time.time() - int(self.session.get('ts', 0)) < int(self.session.get('expires_in', 0)) / 2.0:
+            return
+
         url = 'https://oauth.taobao.com/authorize?response_type=token&client_id=' + client_id + '&state=xql_tkb&view=web'
         logging.info("load %s", url)
         self.web.get(url)
@@ -305,6 +310,7 @@ class Spider(object):
                             result[param[0]] = param[1]
                     if result:
                         self.session = result
+                        self.session["ts"] = time.time()
                 logging.info("session success %s", url)
                 break
 
@@ -316,12 +322,25 @@ class Spider(object):
         self.web.quit()
 
 class CookiesRequestHandler(RequestHandler):
+    @gen.coroutine
     def get(self):
+        force_refresh = self.get_query_argument("force_refresh", 0)
+        if force_refresh:
+            future = gen.Future()
+            tasks.put((future, spider.login, (), {}))
+            yield future
         self.write(spider.cookies.encode("utf-8"))
 
 class SessionRequestHandler(RequestHandler):
+    @gen.coroutine
     def get(self):
         name = self.get_query_argument("name", "")
+        force_refresh = self.get_query_argument("force_refresh", 0)
+        if force_refresh:
+            future = gen.Future()
+            tasks.put((future, spider.login, (), {}))
+            yield future
+
         if name:
             self.write(spider.session.get(name, "").encode("utf-8"))
         else:
@@ -350,6 +369,7 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)1.1s %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S', filemode='a+', stream = sys.stdout)
 
+    tasks = Queue.Queue()
     if bind_port:
         server_thread = threading.Thread(target=start_server)
         server_thread.setDaemon(True)
@@ -364,7 +384,17 @@ if __name__ == '__main__':
     if demon_mod:
         last_refresh_time = time.time()
         while not is_stoped:
-            time.sleep(1)
+            try:
+                task = tasks.get(True, 1)
+                future, callback, args, kwargs = task
+                result = None
+                try:
+                    result = callback(*args, **kwargs)
+                finally:
+                    IOLoop.current().add_callback(future.set_result, result)
+            except Queue.Empty:
+                pass
+
             if time.time() - last_refresh_time >= refresh_time:
                 logging.info("start refresh")
                 spider.login()
