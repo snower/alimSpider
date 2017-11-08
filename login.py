@@ -278,6 +278,8 @@ class Spider(object):
         if not force_refresh and self.session and time.time() - int(self.session.get('ts', 0)) < int(self.session.get('expires_in', 0)) / 2.0:
             return
 
+        self.web.get("https://login.taobao.com/")
+        self.load_cookies()
         url = 'https://oauth.taobao.com/authorize?response_type=token&client_id=' + client_id + '&state=xql_tkb&view=web'
         logging.info("load %s", url)
         self.web.get(url)
@@ -389,7 +391,10 @@ if __name__ == '__main__':
                 future, callback, args, kwargs = task
                 result = None
                 try:
-                    result = callback(*args, **kwargs)
+                    try:
+                        result = callback(*args, **kwargs)
+                    finally:
+                        spider.web.get("http://connect.rom.miui.com/generate_204")
                 finally:
                     IOLoop.current().add_callback(future.set_result, result)
             except Queue.Empty:
@@ -397,9 +402,12 @@ if __name__ == '__main__':
 
             if time.time() - last_refresh_time >= refresh_time:
                 logging.info("start refresh")
-                spider.login()
-                if client_id:
-                    spider.get_session()
+                try:
+                    spider.login()
+                    if client_id:
+                        spider.get_session()
+                finally:
+                    spider.web.get("http://connect.rom.miui.com/generate_204")
                 logging.info("end refresh")
                 last_refresh_time = time.time()
         spider.quit()
