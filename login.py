@@ -352,12 +352,16 @@ class SessionRequestHandler(RequestHandler):
             self.write(("&".join(["%s=%s" % (key, value) for key, value in spider.session.iteritems()])).encode("utf-8"))
 
 def start_server():
-    app = Application([
-        (r"/cookies", CookiesRequestHandler),
-        (r"/session", SessionRequestHandler),
-    ])
-    app.listen(bind_port, bind_host)
-    IOLoop.current().start()
+    global is_stoped
+    try:
+        app = Application([
+            (r"/cookies", CookiesRequestHandler),
+            (r"/session", SessionRequestHandler),
+        ])
+        app.listen(bind_port, bind_host)
+        IOLoop.current().start()
+    except:
+        is_stoped = True
 
 def exit_handler(*args, **kwargs):
     global is_stoped
