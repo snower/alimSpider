@@ -205,9 +205,12 @@ class Spider(object):
         logging.info("load %s", url)
         self.web.get(url)
         if self.web.current_url == success_url:
-            logging.info('login success')
-            self.login_succed = True
-            self.save_cookies()
+            my_taobao_url = "https://my.taobao.com/my_taobao.htm"
+            self.web.get(my_taobao_url)
+            if self.web.current_url == my_taobao_url:
+                logging.info('login success')
+                self.login_succed = True
+                self.save_cookies()
         elif self.web.current_url != url:
             logging.info("redirect login %s", self.web.current_url)
             taobaoLoginIfr = self.web.find_elements_by_name("taobaoLoginIfr")
