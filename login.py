@@ -118,7 +118,7 @@ class Spider(object):
                 user_id = self.get_user_id()
                 if user_id in session:
                     cookies = session[user_id]
-                    self.web.get("https://login.taobao.com/")
+                    self.web.get("https://my.taobao.com/my_taobao.htm")
                     for cookie in cookies["login.taobao.com"]:
                         self.web.add_cookie(cookie)
                     self.web.get("http://pub.alimama.com/")
@@ -141,7 +141,7 @@ class Spider(object):
             pass
 
         cookies = {}
-        self.web.get("https://login.taobao.com/")
+        self.web.get("https://my.taobao.com/my_taobao.htm")
         cookies["login.taobao.com"] = self.web.get_cookies()
         self.web.get("http://pub.alimama.com/")
         cookies["pub.alimama.com"] = self.web.get_cookies()
